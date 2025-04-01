@@ -1,0 +1,31 @@
+{
+   
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-g",
+                "-std=c++17",
+                "main.cpp",
+                "filesMonitor/*.cpp",
+                "utilities/*.cpp",
+                "-pthread",
+                "-o",
+                "filesServer"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "detail": "Compiles all C++ files in the project"
+        }
+    ]
+}
