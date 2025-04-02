@@ -1,5 +1,6 @@
 #include <iostream>
-#include "filesMonitor/filesMonitor.h" // Assuming you have a FileMonitor class
+#include "filesMonitor/filesMonitor.h" 
+#include "filesMonitor/dataFetch.h"
 
 
 
@@ -8,6 +9,9 @@ int main(int argc, char* argv[])
     // Create the file monitor instance
 
     filesMonitor fileMonitor("/home/yedidia/github/filesServer");
+    dataFetch dataFetch;
+
+    fileMonitor.attach(&dataFetch); // Attach the observer
 
     if (!fileMonitor.Start()) 
     {

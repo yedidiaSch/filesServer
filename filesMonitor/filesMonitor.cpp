@@ -145,24 +145,21 @@ void filesMonitor::processEvent(const struct inotify_event* event)
     FileEvent fileEvent;
     fileEvent.filename = filename;
     
-    // Create a pointer to heap-allocated string that will be passed to observers
-    std::string* filenamePtr = new std::string(filename);
-    
     if (event->mask & IN_CREATE) {
         fileEvent.eventType = EventType::CREATED;
-        notify(filenamePtr);  // Pass pointer to the string
+        notify(&fileEvent);  // Pass pointer to the string
     }
     else if (event->mask & IN_DELETE) {
         fileEvent.eventType = EventType::DELETED;
-        notify(filenamePtr);
+        notify(&fileEvent);
     }
     else if (event->mask & IN_MODIFY) {
         fileEvent.eventType = EventType::MODIFIED;
-        notify(filenamePtr);
+        notify(&fileEvent);
     }
     else if (event->mask & IN_ATTRIB) {
         fileEvent.eventType = EventType::ATTRIB_CHANGED;
-        notify(filenamePtr);
+        notify(&fileEvent);
     }
 }
 
