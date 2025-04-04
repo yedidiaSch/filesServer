@@ -5,6 +5,8 @@
 #include <sstream>
 #include <iomanip>
 
+#include <openssl/sha.h>
+
 void printVectorAsHex(const std::vector<char>& data) {
     for (unsigned char c : data) {  // Treat as unsigned to avoid negative values
         std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)c << " ";
@@ -37,7 +39,6 @@ void dataFetch::update(void* params)
         return;
     }
 
-    
     switch (fileEvent->eventType) 
     {
         case filesMonitor::EventType::CREATED:
@@ -63,26 +64,36 @@ void dataFetch::update(void* params)
             std::cerr << "Unknown event type." << std::endl;
             return;
     }
-
 }
 
 void dataFetch::handleFileChange(const std::string& filename)
 {
-    // Read the file content
-    std::vector<char> content = readFileContent(filename);
-
-    if (!content.empty()) 
-    {
-        printVectorAsHex(content);
-        std::cout << "Content size: " << content.size() << " bytes" << std::endl;
-    } 
-    
-    else 
-    {
-        std::cout << "Failed to read content of " << filename << std::endl;
+    try {
+        // Read the file content and metadata
+        FileData fileData = readFileWithMetadata(filename);
+        
+        // Print metadata
+        std::cout << "File: " << fileData.filename << std::endl;
+        std::cout << "Size: " << fileData.fileSize << " bytes" << std::endl;
+        std::cout << "Modified: " << std::ctime(&fileData.modificationTime);
+        std::cout << "Checksum: " << fileData.checksum << std::endl;
+        
+        // Print content as hex if needed
+        std::cout << "Content preview: ";
+        if (!fileData.content.empty()) {
+            // Print first few bytes as hex
+            printVectorAsHex(std::vector<char>(
+                fileData.content.begin(), 
+                fileData.content.begin() + std::min(fileData.content.size(), static_cast<size_t>(20))
+            ));
+            std::cout << "Content size: " << fileData.content.size() << " bytes" << std::endl;
+        } else {
+            std::cout << "Empty file" << std::endl;
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Error processing file " << filename << ": " << e.what() << std::endl;
     }
 }
-
 
 std::vector<char> dataFetch::readFileContent(const std::string& filename) 
 {
@@ -103,6 +114,61 @@ std::vector<char> dataFetch::readFileContent(const std::string& filename)
     }
 
     return buffer;
+}
+
+// Modified function to gather file metadata along with content
+dataFetch::FileData dataFetch::readFileWithMetadata(const std::string& filename) 
+{
+    FileData fileData;
+    fileData.filename = filename;
+    
+    // Get file info
+    struct stat fileInfo;
+    if (stat(filename.c_str(), &fileInfo) != 0) {
+        throw std::runtime_error("Failed to get file info: " + filename);
+    }
+    
+    fileData.fileSize = fileInfo.st_size;
+    fileData.modificationTime = fileInfo.st_mtime;
+    
+    // Read content
+    std::ifstream file(filename, std::ios::binary);
+    if (!file) {
+        throw std::runtime_error("Failed to open file: " + filename);
+    }
+    
+    // Get file size
+    file.seekg(0, std::ios::end);
+    std::streamsize size = file.tellg();
+    file.seekg(0, std::ios::beg);
+    
+    // Read file into vector
+    fileData.content.resize(size);
+    if (!file.read(fileData.content.data(), size)) {
+        throw std::runtime_error("Failed to read file: " + filename);
+    }
+    
+    // Calculate checksum (implement calculateChecksum separately)
+    fileData.checksum = calculateChecksum(fileData.content);
+    
+    return fileData;
+}
+
+std::string dataFetch::calculateChecksum(const std::vector<char>& data) {
+    // Use SHA-256 algorithm from OpenSSL
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, data.data(), data.size());
+    SHA256_Final(hash, &sha256);
+    
+    // Convert hash to hex string
+    std::stringstream ss;
+    for(int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
+        ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(hash[i]);
+    }
+    
+    return ss.str();
 }
 
 

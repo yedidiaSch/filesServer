@@ -15,6 +15,8 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <sys/stat.h>
+#include <ctime>
 
 /**
  * @class dataFetch
@@ -26,6 +28,16 @@
 class dataFetch : public IObserver
 {
 public:
+
+
+    struct FileData {
+        std::string filename;
+        size_t fileSize;
+        std::time_t modificationTime;
+        std::vector<char> content;
+        std::string checksum;  // e.g., MD5 or SHA-256
+    };
+
 
     /**
      * @brief Constructs a dataFetch instance.
@@ -54,10 +66,23 @@ private:
      * If the file cannot be opened, it may log an error or throw an exception.
      */
      std::vector<char> readFileContent(const std::string& filename);
+     
 
      void handleFileChange(const std::string& filename);
-    
 
+     /**
+      * @brief Reads the file content along with its metadata.
+      * @param filename The path of the file to read.
+      * @return The file data including metadata.
+      */
+     FileData readFileWithMetadata(const std::string& filename);
+
+     /**
+      * @brief Calculates the checksum of the given data.
+      * @param data The data for which the checksum is to be calculated.
+      * @return The checksum as a string.
+      */
+     std::string calculateChecksum(const std::vector<char>& data);
 };
 
 #endif // DATA_FETCH_H

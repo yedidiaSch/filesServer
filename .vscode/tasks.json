@@ -13,6 +13,7 @@
                 "filesMonitor/*.cpp",
                 "utilities/*.cpp",
                 "-pthread",
+                "-lcrypto",
                 "-o",
                 "filesServer"
             ],
