@@ -48,11 +48,12 @@ public:
 
      ~dataFetch();
     /**
-     * @brief Callback function triggered when a file changes.
-     * @param filename The path of the file that was changed.
+     * @brief Callback function triggered when a notification is received.
+     * @param params A pointer to the parameters associated with the notification.
      * 
-     * This method is called when the monitored file system detects changes to a file.
-     * It reads the current content of the modified file.
+     * This method is called when the observed subject sends a notification.
+     * It processes the parameters and handles the appropriate action based on the notification type.
+     * For file changes, it typically extracts the filename from the parameters and calls handleFileChange().
      */
      void update(void* params) override;
 
@@ -68,6 +69,15 @@ private:
      std::vector<char> readFileContent(const std::string& filename);
      
 
+     /**
+      * @brief Processes a file that has been changed.
+      * @param filename The path of the file that was changed.
+      * 
+      * This method is called after a file change is detected to handle
+      * the appropriate actions, such as reading the updated content and metadata,
+      * calculating a new checksum, and possibly notifying other components
+      * about the file change.
+      */
      void handleFileChange(const std::string& filename);
 
      /**
