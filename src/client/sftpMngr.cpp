@@ -6,16 +6,27 @@
 
 // Constructor
 sftpMngr::sftpMngr(   const std::string& serverAddress, const std::string& username, 
-                            const std::string& password, int port)
+                            const std::string& password, int port, 
+                            const std::string& remotePath,
+                            std::chrono::milliseconds connectionTimeout)
                             : m_serverAddress(serverAddress), m_username(username), 
-                            m_password(password), m_port(port), m_sshSession(nullptr),
-                            m_sftpSession(nullptr) 
+                            m_password(password), m_port(port), m_remotePath(remotePath),
+                            m_sshSession(nullptr), m_sftpSession(nullptr),
+                            m_connectionTimeout(connectionTimeout), m_isConnected(false)
 {
+    // Initialize the queue thread for file transfer tasks
+    itsQueueThread = new QueueThread();
 }
 
 // Destructor
 sftpMngr::~sftpMngr() 
 {
+    // Clean up queue thread
+    if (itsQueueThread != nullptr) {
+        delete itsQueueThread;
+        itsQueueThread = nullptr;
+    }
+    
     disconnect();
 }
 
@@ -61,12 +72,21 @@ bool sftpMngr::connect()
     }
 
     // Initialize SFTP after successful SSH connection
-    return initializeSFTP();
+    bool result = initializeSFTP();
+    if (result) {
+        m_isConnected = true;
+        resetConnectionTimer(); // Start the inactivity timer
+    }
+    return result;
 }
 
 // Disconnect SSH and SFTP sessions
 void sftpMngr::disconnect() 
 {
+    // Stop the timer first
+    Stop();
+    m_isConnected = false;
+    
     // Clean up SFTP session
     if (m_sftpSession != nullptr) 
     {
@@ -81,6 +101,32 @@ void sftpMngr::disconnect()
         ssh_free(m_sshSession);
         m_sshSession = nullptr;
     }
+    
+    std::cout << "Disconnected from SFTP server due to inactivity." << std::endl;
+}
+
+// Reset the connection timer
+void sftpMngr::resetConnectionTimer() 
+{
+    if (m_isConnected) {
+        // Stop any existing timer
+        Stop();
+        
+        // Set a new timer for the timeout duration
+        SetTimer(m_connectionTimeout);
+        
+        // Start the timer
+        Start();
+        std::cout << "Connection timer reset. Will disconnect in " 
+                 << m_connectionTimeout.count() / 1000 << " seconds if idle." << std::endl;
+    }
+}
+
+// Timer timeout handler
+void sftpMngr::onTimeout() 
+{
+    std::cout << "Connection timeout reached. Disconnecting..." << std::endl;
+    disconnect();
 }
 
 // Initialize SFTP subsystem
@@ -164,9 +210,13 @@ bool sftpMngr::sendFile(const std::string& localFilePath, const std::string& rem
     sftp_close(remoteFile);
     localFile.close();
     
+    // Reset the connection timer after successful file transfer
+    if (success) {
+        resetConnectionTimer();
+    }
+    
     return success;
 }
-
 
 void sftpMngr::update(void* params)
 {
@@ -198,6 +248,7 @@ void sftpMngr::update(void* params)
 
         case filesMonitor::EventType::DELETED:
             std::cout << "File deleted: " << filename << std::endl;
+            handleFileDeletion(filename);
             return; // No need to read content for deleted files
 
         case filesMonitor::EventType::ATTRIB_CHANGED:
@@ -208,25 +259,85 @@ void sftpMngr::update(void* params)
             std::cerr << "Unknown event type." << std::endl;
             return;
     }
-
-
-   
 }
 
 void sftpMngr::handleFileCreation(const std::string& filename)
 {
-    // Handle file change
-    if (!filename.empty()) 
+    // Create a task to send the file
+    auto task = [this, filename]()
     {
-        std::cout << "File created: " << filename << std::endl;
+        // Handle file change
+        if (!filename.empty()) 
+        {
+            std::cout << "File created: " << filename << std::endl;
 
-        // Send the file to the server
-        if (!sendFile(filename, "/remote/path/" + filename)) {
-            std::cerr << "Failed to send file: " << filename << std::endl;
+            // Add connection check similar to handleFileDeletion
+            if (!m_sftpSession) 
+            {
+                // If not connected, try to connect
+                if (!connect() || !m_sftpSession) {
+                    std::cerr << "Failed to connect to SFTP server for sending file: " << filename << std::endl;
+                    return;
+                }
+            } else {
+                // Connection exists, reset the timer
+                resetConnectionTimer();
+            }
+
+            // Extract just the filename from the path
+            std::string baseFilename = std::filesystem::path(filename).filename().string();
+            
+            // Send the file to the server using configured remote path
+            std::string remoteFilePath = m_remotePath + "/" + baseFilename;
+            if (!sendFile(filename, remoteFilePath)) {
+                std::cerr << "Failed to send file: " << filename << std::endl;
+            }
+        } 
+        else 
+        {
+            std::cerr << "Invalid parameters received" << std::endl;
         }
-    } 
-    else 
-    {
-        std::cerr << "Invalid parameters received" << std::endl;
-    }
+    };
+
+    // Add the task to the queue
+    itsQueueThread->put(task);
 }
+
+void sftpMngr::handleFileDeletion(const std::string& filename)
+{
+    // Create a task to send the file
+    auto task = [this, filename]()
+    {
+        if (!m_sftpSession) 
+        {
+            // If not connected, try to connect
+            if (!connect() || !m_sftpSession) {
+                std::cerr << "Failed to connect to SFTP server for deleting file: " << filename << std::endl;
+                return;
+            }
+        } else {
+            // Connection exists, reset the timer
+            resetConnectionTimer();
+        }
+        
+        // Extract just the filename from the path
+        std::string baseFilename = std::filesystem::path(filename).filename().string();
+        
+        // Construct the remote path using the configured remote path
+        std::string remoteFilePath = m_remotePath + "/" + baseFilename;
+        
+        // Execute the delete operation on the remote server
+        int result = sftp_unlink(m_sftpSession, remoteFilePath.c_str());
+        if (result != SSH_OK) {
+            std::cerr << "Failed to delete file " << remoteFilePath << " on remote server: " 
+                    << ssh_get_error(m_sshSession) << std::endl;
+        } else {
+            std::cout << "Successfully deleted file " << remoteFilePath << " from remote server." << std::endl;
+        }
+    };
+
+    // Add the task to the queue
+    itsQueueThread->put(task);
+}
+
+
