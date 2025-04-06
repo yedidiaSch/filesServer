@@ -6,7 +6,7 @@
             "name": "Debug filesMonitor",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/filesServer",
+            "program": "${workspaceFolder}/client.elf",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

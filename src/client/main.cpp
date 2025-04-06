@@ -1,6 +1,6 @@
 #include <iostream>
-#include "filesMonitor/filesMonitor.h" 
-#include "filesMonitor/dataFetch.h"
+#include "filesMonitor.h" 
+#include "dataFetch.h"
 
 
 

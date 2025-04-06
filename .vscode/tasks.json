@@ -3,19 +3,45 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build",
+            "label": "client build",
             "type": "shell",
             "command": "g++",
             "args": [
                 "-g",
                 "-std=c++17",
-                "main.cpp",
-                "filesMonitor/*.cpp",
-                "utilities/*.cpp",
+                "src/client/*.cpp",
+                "src/utilities/*.cpp",
                 "-pthread",
                 "-lcrypto",
+                "-lssh",
                 "-o",
-                "filesServer"
+                "client.elf"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "detail": "Compiles all C++ files in the project"
+        },
+        {
+            "label": "server build",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-g",
+                "-std=c++17",
+                "src/server/*.cpp",
+                "src/utilities/*.cpp",
+                "-pthread",
+                "-lcrypto",
+                "-lssh",
+                "-o",
+                "server.elf"
             ],
             "group": {
                 "kind": "build",
