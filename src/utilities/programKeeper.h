@@ -1,3 +1,11 @@
+/**
+ * @file programKeeper.h
+ * @brief Provides utilities for managing program execution flow and termination.
+ * 
+ * This header defines the ProgramKeeper class which offers static methods to control
+ * program flow through user input or atomic flag synchronization mechanisms.
+ */
+
 #ifndef PROGRAM_KEEPER_H
 #define PROGRAM_KEEPER_H
 
@@ -5,43 +13,54 @@
 #include <atomic>
 #include <chrono>
 
-#include "threadBase.h"
 
+/**
+ * @class ProgramKeeper
+ * @brief Manages program execution flow and provides mechanisms for graceful termination.
+ * 
+ * ProgramKeeper offers static methods to pause program execution either by waiting for user input
+ * or by utilizing atomic flags for thread synchronization. This is useful for controlling the
+ * main program loop and implementing graceful shutdown procedures.
+ */
 class ProgramKeeper 
 {
 public:
-   
-    
-    // Function to wait for user input (Enter key)
-    static void waitForUserInput() 
-    {
-        std::this_thread::sleep_for(std::chrono::seconds(1)); // Sleep for 1 second
-        std::cout << "Press Enter to exit...\n";
-        std::cin.get();
-    }
+    /**
+     * @brief Waits for the user to press Enter to continue execution.
+     * 
+     * This function pauses for a second, prompts the user to press Enter,
+     * and then blocks until the Enter key is pressed.
+     */
+    static void waitForUserInput();
 
-    // Function to wait in this thread till atomic variable is set to true
-    static void waitForAtomicTrue() 
-    {
-        while (m_stopCondition.load()) 
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-    }
+    /**
+     * @brief Blocks execution until the stop condition is set to false.
+     * 
+     * This method polls the m_stopCondition atomic flag every 100 milliseconds
+     * and continues to wait as long as the condition remains true.
+     */
+    static void waitForAtomicTrue();
 
-    // Function to signal that waiting should end
-    static void signalStop() 
-    {
-        m_stopCondition.store(false);
-    }
-
+    /**
+     * @brief Signals that any threads waiting on the stop condition should exit their wait state.
+     * 
+     * Sets the m_stopCondition atomic flag to false, causing waitForAtomicTrue() to exit its loop.
+     */
+    static void signalStop();
 
 private:
-
-    static std::atomic<bool> m_stopCondition; // Atomic variable to control the wait
+    /**
+     * @brief Atomic flag that controls the wait condition.
+     * 
+     * When true, waitForAtomicTrue() will continue to wait.
+     * When false, waitForAtomicTrue() will exit its waiting loop.
+     * Initialized to true by default.
+     */
+    static std::atomic<bool> m_stopCondition;
 };
 
-std::atomic<bool> ProgramKeeper::m_stopCondition{true};
+
+
 
 #endif /* PROGRAM_KEEPER_H */
 
