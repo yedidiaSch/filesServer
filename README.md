@@ -10,7 +10,7 @@ A file monitoring application that automatically sends content over the network 
 - **Customizable filters** - Configure which files to monitor with pattern matching
 
 
-## 🔧 Requirements
+## 🔧 Requirements 
 
 - Linux-based system 
 - C++11 compatible compiler
