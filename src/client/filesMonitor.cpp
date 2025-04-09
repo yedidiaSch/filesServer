@@ -174,7 +174,7 @@ void filesMonitor::thread()
         .revents = 0
     };
 
-    while (m_run_flag.load()) {
+    while (m_running.load()) {
         // Wait for events with timeout
         int poll_ret = poll(&pfd, 1, 500);  // 500ms timeout
         
