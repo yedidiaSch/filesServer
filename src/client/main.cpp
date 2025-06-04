@@ -1,6 +1,6 @@
 #include <iostream>
 #include "filesMonitor.h" 
-#include "sftpMngr.h"
+#include "restApiMngr.h"
 #include "../utilities/programKeeper.h"
 
 
@@ -11,10 +11,10 @@ int main(int argc, char* argv[])
 
     filesMonitor fileMonitor("/home/yedidia/github/filesServer");
     
-    // Create the SFTP manager instance
-    sftpMngr sftp("127.0.0.1", "yedidia", "aQuila12#d", 22, "/home/yedidia/sftp");
+    // Create the REST API manager instance
+    RestApiMngr restClient("http://127.0.0.1:8080");
 
-    fileMonitor.attach(&sftp); 
+    fileMonitor.attach(&restClient);
 
     if (!fileMonitor.Start()) 
     {
