@@ -1,7 +1,6 @@
 #include <iostream>
 #include "filesMonitor.h" 
 #include "restApiMngr.h"
-#include "../utilities/programKeeper.h"
 
 
 int main(int argc, char* argv[]) 
@@ -22,8 +21,8 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    // The programKeeper class is used to manage the program's lifecycle
-    ProgramKeeper::waitForUserInput(); // Wait for user input to exit
+    std::cout << "Press Enter to exit..." << std::endl;
+    std::cin.get();
 
     return 0;
   
