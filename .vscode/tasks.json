@@ -12,8 +12,6 @@
                 "src/client/*.cpp",
                 "utilities/*.cpp",
                 "-pthread",
-                "-lcrypto",
-                "-lssh",
                 "-lcurl",
                 "-o",
                 "client.elf"
@@ -39,8 +37,6 @@
                 "src/server/*.cpp",
                 "utilities/*.cpp",
                 "-pthread",
-                "-lcrypto",
-                "-lssh",
                 "-o",
                 "server.elf"
             ],
