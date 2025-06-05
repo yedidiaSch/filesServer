@@ -6,6 +6,8 @@
 #define REST_API_MNGR_H
 
 #include <string>
+#include <unordered_map>
+#include <chrono>
 #include "filesMonitor.h"
 #include "../utilities/IObserver.h"
 #include "../utilities/QueueThread.h"
@@ -73,11 +75,21 @@ private:
      */
     void handleFileDeletion(const std::string& filename);
 
+    /**
+     * @brief Determine if a file should be sent based on recent uploads.
+     * @param filename Name of the file to check.
+     * @return true if the file was not sent in the last 2 seconds.
+     */
+    bool shouldSendFile(const std::string& filename);
+
     /** Base REST server URL */
     std::string    m_serverUrl;
 
     /** Queue thread used to run HTTP requests asynchronously */
     QueueThread*   itsQueueThread;
+
+    /** Map tracking the last upload time for each file */
+    std::unordered_map<std::string, std::chrono::steady_clock::time_point> recentUploads;
 };
 
 #endif // REST_API_MNGR_H

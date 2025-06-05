@@ -3,6 +3,8 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <thread>
+#include <chrono>
 
 RestApiMngr::RestApiMngr(const std::string& serverUrl)
     : m_serverUrl(serverUrl)
@@ -124,10 +126,32 @@ bool RestApiMngr::deleteFile(const std::string& filename)
     return res == CURLE_OK;
 }
 
+bool RestApiMngr::shouldSendFile(const std::string& filename)
+{
+    auto now = std::chrono::steady_clock::now();
+    auto it = recentUploads.find(filename);
+    if (it == recentUploads.end())
+    {
+        return true;
+    }
+    auto diff = std::chrono::duration_cast<std::chrono::seconds>(now - it->second);
+    return diff.count() > 2;
+}
+
 void RestApiMngr::handleFileCreation(const std::string& filename)
 {
     auto task = [this, filename]() {
-        sendFile(filename);
+        std::this_thread::sleep_for(std::chrono::milliseconds(300));
+        if (shouldSendFile(filename))
+        {
+            sendFile(filename);
+            recentUploads[filename] = std::chrono::steady_clock::now();
+            std::cout << "File sent: " << filename << std::endl;
+        }
+        else
+        {
+            std::cout << "Skipping duplicate send of: " << filename << std::endl;
+        }
     };
     itsQueueThread->put(task);
 }
@@ -135,7 +159,17 @@ void RestApiMngr::handleFileCreation(const std::string& filename)
 void RestApiMngr::handleFileModification(const std::string& filename)
 {
     auto task = [this, filename]() {
-        sendFile(filename);
+        std::this_thread::sleep_for(std::chrono::milliseconds(300));
+        if (shouldSendFile(filename))
+        {
+            sendFile(filename);
+            recentUploads[filename] = std::chrono::steady_clock::now();
+            std::cout << "File sent: " << filename << std::endl;
+        }
+        else
+        {
+            std::cout << "Skipping duplicate send of: " << filename << std::endl;
+        }
     };
     itsQueueThread->put(task);
 }
