@@ -55,6 +55,14 @@ void RestApiMngr::update(void* params)
     }
 }
 
+size_t readCallback(void* ptr, size_t size, size_t nmemb, void* stream) {
+    std::ifstream* file = static_cast<std::ifstream*>(stream);
+    if (!file->read(static_cast<char*>(ptr), size * nmemb)) {
+        return file->gcount(); // Return the number of bytes read
+    }
+    return size * nmemb;
+}
+
 bool RestApiMngr::sendFile(const std::string& localFilePath)
 {
     CURL* curl = curl_easy_init();
@@ -64,22 +72,36 @@ bool RestApiMngr::sendFile(const std::string& localFilePath)
         return false;
     }
 
-    std::ifstream file(localFilePath, std::ios::binary);
-    if (!file)
-    {
-        std::cerr << "Failed to open file: " << localFilePath << std::endl;
+    if (!std::filesystem::exists(localFilePath)) {
+        std::cerr << "File does not exist: " << localFilePath << std::endl;
         curl_easy_cleanup(curl);
         return false;
     }
 
     std::filesystem::path p(localFilePath);
-    curl_easy_setopt(curl, CURLOPT_URL, (m_serverUrl + "/upload").c_str());
-    curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
-    curl_easy_setopt(curl, CURLOPT_READFUNCTION, nullptr);
-    curl_easy_setopt(curl, CURLOPT_READDATA, &file);
-    curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(std::filesystem::file_size(p)));
+    curl_mime* mime = curl_mime_init(curl);
+    curl_mimepart* part = curl_mime_addpart(mime);
+
+    curl_mime_name(part, "file");
+    curl_mime_filedata(part, localFilePath.c_str());
+
+    curl_easy_setopt(curl, CURLOPT_URL, (m_serverUrl + "/api/files/upload").c_str());
+    curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
 
     CURLcode res = curl_easy_perform(curl);
+
+    long response_code = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+    std::cout << "HTTP Response Code: " << response_code << std::endl;
+
+    if (res != CURLE_OK) {
+        std::cerr << "Failed to send file: " << curl_easy_strerror(res) << std::endl;
+    } else {
+        std::cout << "File sent successfully: " << localFilePath << std::endl;
+    }
+
+
+    curl_mime_free(mime);
     curl_easy_cleanup(curl);
     return res == CURLE_OK;
 }
@@ -93,7 +115,7 @@ bool RestApiMngr::deleteFile(const std::string& filename)
         return false;
     }
 
-    std::string url = m_serverUrl + "/file/" + std::filesystem::path(filename).filename().string();
+    std::string url = m_serverUrl + "/api/files/" + std::filesystem::path(filename).filename().string();
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
 

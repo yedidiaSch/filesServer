@@ -1,0 +1,17 @@
+{
+  "name": "local-rest-api-server",
+  "version": "1.0.0",
+  "description": "A local REST API server for handling file uploads and deletions.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "dotenv": "^10.0.0",
+    "express": "^4.21.2",
+    "multer": "^2.0.1"
+  },
+  "devDependencies": {},
+  "author": "",
+  "license": "ISC"
+}

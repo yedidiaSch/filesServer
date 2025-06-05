@@ -11,9 +11,9 @@ int main(int argc, char* argv[])
     filesMonitor fileMonitor("/home/yedidia/github/filesServer");
     
     // Create the REST API manager instance
-    RestApiMngr restClient("http://127.0.0.1:8080");
+    RestApiMngr apiManager("http://localhost:3000");
 
-    fileMonitor.attach(&restClient);
+    fileMonitor.attach(&apiManager);
 
     if (!fileMonitor.Start()) 
     {
